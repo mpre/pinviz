@@ -11,12 +11,16 @@ NAMES = { rbtree.BLANK  : "BLANK",
 
 def main( ):
     parser = argparse.ArgumentParser( prog = "regreb",
-                                      description = "Rebuil gene structure from PIntron and cutfiller output." )
+                                      description = "Rebuil gene structure from PIntron and cutfiller output.",
+                                      formatter_class = argparse.ArgumentDefaultsHelpFormatter )
     parser.add_argument( '-p', '--pintron-output', help = "PIntron output file.",
                          required = True, dest = 'pfile' )
     parser.add_argument( '-c', '--cutfiller-output', help = "cutfiller output file.",
                          required = True, dest = 'cfile' )
-    
+    parser.add_argument( '-l', '--max-intron-length',
+                         help = 'Max intron length accepted. Introns that exceed this value will be discarded',
+                         required = False, dest = 'maxIntron', type = int, default = 15000 )
+
     args = parser.parse_args( )
     itree = rbtree.RBIntervalTree( )
 
@@ -26,13 +30,15 @@ def main( ):
             elements     = line.split( "\t" )
             intron_begin = int( elements[ 0 ] )
             intron_end   = int( elements[ 1 ] )
-            # print >> sys.stderr, intron_begin, "\t", intron_end
-            itree.rbinsert( [ intron_begin, intron_end ], rbtree.INTRON )
+            if abs( intron_begin - intron_end ) < args.maxIntron:
+                # print >> sys.stderr, intron_begin, "\t", intron_end, "\t", abs( intron_begin - intron_end )
+                itree.rbinsert( [ intron_begin, intron_end ], rbtree.INTRON )
 
     print >> sys.stderr, "{0:<50}".format("==> OPENING CUTFILLER OUTPUT FILE: {0}".format( args.cfile )) 
     with open( args.cfile, 'r' ) as inExons:
         for line in inExons.readlines( ):
-            elements   = line.split( "\t" )
+            # Work around for strangely formatted files
+            elements   = line.replace(" ","\t").replace("\r\n", "").split( "\t" )
             exon_begin = int( elements[ 0 ] )
             exon_end   = int( elements[ 1 ] )
             itree.rbinsert( [ exon_begin, exon_end ], rbtree.EXON )
