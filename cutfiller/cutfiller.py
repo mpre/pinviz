@@ -9,16 +9,15 @@ def is_unique( interval_set ):
     Analyze interval_set and return true if it represent a single, contiguous
     region.
     """
-    uniq = True
-    if len( interval_set ) == 0:
+    # uniq = True    if len( interval_set ) == 0:
         return False
     elif len( interval_set ) == 1:
         return True
     else:
         for i in range( len( interval_set ) -1 ):
             if( interval_set[i].root[1] +1 != interval_set[i+1].root[0] ):
-                uniq = False
-        return uniq
+                return False
+        return True
 
 def grow_right( interval_set ):
     """
@@ -40,7 +39,7 @@ def grow_right( interval_set ):
 
 def grow_left( interval_set ):
     """
-    Compute the biggest contiguous region that ends in the last element of 
+    Compute the biggest contiguous region that ends in the last element of
     interval_set (if any).
     """
     if len( interval_set ) == 0:
@@ -58,14 +57,15 @@ def grow_left( interval_set ):
 
 def main( ):
     parser = argparse.ArgumentParser( prog = "cutfiller",
-                                      description = "Rebuild exons from PIntron output." )
+                                      description = "Rebuild exons from PIntron output.",
+                                      formatter_class = argparse.ArgumentDefaultsHelpFormatter )
     parser.add_argument( '-p', '--pintron-output', help = "PIntron output file",
                          required = True, dest = 'pfile' )
     parser.add_argument( '-a', '--alignment-file', help = 'Alignment file (PIntron)',
                          required = True, dest = 'alfile')
     parser.add_argument( '-l', '--max-intron-length',
                          help = 'Max intron length accepted. Introns that exceed this value will be discarded',
-                         required = False, dest = 'minIntron', type = int, default = 15000 )
+                         required = False, dest = 'maxIntron', type = int, default = 15000 )
     args = parser.parse_args(  )
 
     cutst = rbtree.RBIntervalTree( )
@@ -97,7 +97,7 @@ def main( ):
             elements = line.split( "\t" )
             region_end = int( elements[ 0 ] ) -1
             region_begin = int( elements[ 1 ] ) +1
-            if abs( region_begin - region_end ) <  args.minIntron:
+            if abs( region_begin - region_end ) <  args.maxIntron:
                 if region_end not in five_p_sites:
                     five_p_sites.append( region_end )
                     five_p_sites_no_exons.append ( region_end )
@@ -122,10 +122,10 @@ def main( ):
         for site2 in five_p_sites:
             if should_continue and site1 < site2:
                 nodes = cutst.search( [ site1, site2 ] )
-                if ( len( nodes ) > 0 and 
-                     nodes[ 0 ].root[ 0 ] <= site1 and 
-                     nodes[ -1 ].root[ 1 ] >= site2 and 
-                     is_unique( nodes ) 
+                if ( len( nodes ) > 0 and
+                     nodes[ 0 ].root[ 0 ] <= site1 and
+                     nodes[ -1 ].root[ 1 ] >= site2 and
+                     is_unique( nodes )
                  ):
                     if site1 in three_p_sites_no_exons:
                         three_p_sites_no_exons = filter( lambda x: x != site1, three_p_sites_no_exons )
@@ -157,7 +157,6 @@ def main( ):
         nodes = [ ]
 
     print >> sys.stderr, "{0:<50}".format( "==> PROCESS COMPLETE" )
-        
+    
 if __name__ == "__main__":
     main( )
-    
