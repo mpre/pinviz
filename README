@@ -1,0 +1,7 @@
+NOTES:
+
+- pysam has to be installed on the system ("pip install pysam"/"pip install
+  --user pysam" should suffice).
+
+- cutfiller/rbtree.py and regreb/rbtree.py are different implementations of
+  red-black trees that manage intervals. Mixing them can actually summon Zeus.
