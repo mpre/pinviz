@@ -3,13 +3,15 @@
 import sys
 import argparse
 import rbtree
+import pysam
 
 def is_unique( interval_set ):
     """
     Analyze interval_set and return true if it represent a single, contiguous
     region.
     """
-    # uniq = True    if len( interval_set ) == 0:
+    uniq = True
+    if len( interval_set ) == 0:
         return False
     elif len( interval_set ) == 1:
         return True
@@ -62,11 +64,20 @@ def main( ):
     parser.add_argument( '-p', '--pintron-output', help = "PIntron output file",
                          required = True, dest = 'pfile' )
     parser.add_argument( '-a', '--alignment-file', help = 'Alignment file (PIntron)',
-                         required = True, dest = 'alfile')
+                         required = False, dest = 'alfile')
+    parser.add_argument( '-s', '--samfile', help = 'Alignment file (sam format)',
+                         required = False, dest = 'samfile')
     parser.add_argument( '-l', '--max-intron-length',
                          help = 'Max intron length accepted. Introns that exceed this value will be discarded',
                          required = False, dest = 'maxIntron', type = int, default = 15000 )
     args = parser.parse_args(  )
+
+    if not args.alfile and not args.samfile:
+        print >> sys.stderr, "ERROR: No samfile given and no PIntron alignment file given.\nAborting..."
+        sys.exit( 1 )
+    if args.alfile and args.samfile:
+        print >> sys.stderr, "ERROR: Both samfile and PIntron alignment files given.\nAborting..."
+        sys.exit( 1 )
 
     cutst = rbtree.RBIntervalTree( )
 
@@ -74,15 +85,25 @@ def main( ):
 
     # Open PIntron alignment file and build the tree
     align_index = 0
-    with open( args.alfile, 'r' ) as inInts:
-        for line in inInts.readlines( ):
-            if not line.startswith( ">" ) and not line.startswith( "#" ):
+    if args.alfile:
+        with open( args.alfile, 'r' ) as inInts:
+            for line in inInts.readlines( ):
+                if not line.startswith( ">" ) and not line.startswith( "#" ):
+                    print >> sys.stderr, "{0:<50}\r".format( "==> PROCESSING ALIGNMENT NUMBER {0:<10}".format( align_index ) ),
+                    align_index += 1
+                    elements = line.split( ' ' )
+                    begin = int( elements[ 2 ] )
+                    end = int( elements[ 3 ] )
+                    cutst.rbinsert( [ begin, end ] )
+    elif args.samfile:
+        with open( args.samfile, 'r') as inSam:
+            samfile = pysam.Samfile( args.samfile )
+            for align in samfile:
                 print >> sys.stderr, "{0:<50}\r".format( "==> PROCESSING ALIGNMENT NUMBER {0:<10}".format( align_index ) ),
                 align_index += 1
-                elements = line.split( ' ' )
-                begin = int( elements[ 2 ] )
-                end = int( elements[ 3 ] )
-                cutst.rbinsert( [ begin, end ] )
+                begin = int( align.pos )
+                end = begin + int( align.qlen )
+                cutst.rbinsert( [begin, end] )
 
     print >> sys.stderr # newline
 
